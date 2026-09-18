@@ -159,7 +159,7 @@ const MOBILE_PATCH = `
 
   window.addEventListener("resize", applyFix);
 })();
-</script>
+</script>`;
 
 function cleanHeaders(headers) {
   const out = new Headers(headers);
