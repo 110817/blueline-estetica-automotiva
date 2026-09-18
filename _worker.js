@@ -99,7 +99,7 @@ const MOBILE_PATCH = `
 
   window.addEventListener("resize", hideTag);
 })();
-</script>
+</script>`;
 
 function cleanHeaders(headers) {
   const out = new Headers(headers);
