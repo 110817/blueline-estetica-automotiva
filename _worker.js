@@ -1,5 +1,86 @@
 const ORIGIN = "https://blueline-estetica-automotiva.patimedrado.chatgpt.site";
 
+const MOBILE_PATCH = `
+<style id="blueline-mobile-fixes">
+@media (max-width: 768px) {
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-x: clip !important;
+  }
+
+  body,
+  main,
+  header,
+  footer,
+  section {
+    max-width: 100% !important;
+  }
+
+  img,
+  video,
+  iframe,
+  svg,
+  canvas {
+    max-width: 100% !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  [data-blueline-mobile-eyebrow="true"] {
+    position: relative !important;
+    transform: translateY(-34px) !important;
+    margin-bottom: -34px !important;
+    z-index: 5 !important;
+  }
+}
+</style>
+
+<script id="blueline-mobile-fix-script">
+(function () {
+  function normalizeText(value) {
+    return (value || "")
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .replace(/\\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function applyMobileFixes() {
+    if (window.innerWidth > 768) return;
+
+    document.documentElement.style.maxWidth = "100%";
+    document.documentElement.style.overflowX = "hidden";
+    document.body.style.maxWidth = "100%";
+    document.body.style.overflowX = "hidden";
+
+    var candidates = document.querySelectorAll("span, p, small, strong, em, div");
+    for (var i = 0; i < candidates.length; i++) {
+      var node = candidates[i];
+      if (normalizeText(node.textContent) === "estetica automotiva especializada") {
+        node.setAttribute("data-blueline-mobile-eyebrow", "true");
+        break;
+      }
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyMobileFixes, { once: true });
+  } else {
+    applyMobileFixes();
+  }
+
+  window.addEventListener("resize", applyMobileFixes);
+})();
+</script>`;
+
 function cleanHeaders(headers) {
   const out = new Headers(headers);
   out.delete("content-security-policy");
@@ -50,8 +131,16 @@ async function proxyRequest(request) {
   if (request.method !== "HEAD" && contentType.includes("text/html")) {
     let html = await upstream.text();
     html = html.split(ORIGIN).join(incomingUrl.origin);
+
+    if (html.includes("</head>")) {
+      html = html.replace("</head>", MOBILE_PATCH + "</head>");
+    } else {
+      html = MOBILE_PATCH + html;
+    }
+
     responseHeaders.delete("content-length");
     responseHeaders.delete("content-encoding");
+
     return new Response(html, {
       status: upstream.status,
       statusText: upstream.statusText,
