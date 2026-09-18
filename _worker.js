@@ -7,7 +7,6 @@ const MOBILE_PATCH = `
   body {
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: hidden !important;
     overflow-x: clip !important;
   }
 
@@ -33,11 +32,11 @@ const MOBILE_PATCH = `
     box-sizing: border-box;
   }
 
-  [data-blueline-mobile-eyebrow="true"] {
+  /* Sobe o BLOCO de conteúdo do hero sem mover o logo. */
+  [data-blueline-mobile-hero-copy="true"] {
     position: relative !important;
     top: -58px !important;
     margin-bottom: -58px !important;
-    z-index: 5 !important;
   }
 }
 </style>
@@ -53,35 +52,65 @@ const MOBILE_PATCH = `
       .toLowerCase();
   }
 
+  function findExactText(target) {
+    var nodes = document.querySelectorAll("span, p, small, strong, em, div");
+    for (var i = 0; i < nodes.length; i++) {
+      if (normalizeText(nodes[i].textContent) === target) {
+        return nodes[i];
+      }
+    }
+    return null;
+  }
+
   function applyMobileFixes() {
     if (window.innerWidth > 768) return;
 
     document.documentElement.style.maxWidth = "100%";
-    document.documentElement.style.overflowX = "hidden";
+    document.documentElement.style.overflowX = "clip";
     document.body.style.maxWidth = "100%";
-    document.body.style.overflowX = "hidden";
+    document.body.style.overflowX = "clip";
 
-    var candidates = Array.from(
-      document.querySelectorAll("span, p, small, strong, em, div")
-    ).filter(function (node) {
-      return normalizeText(node.textContent) === "estetica automotiva especializada";
-    });
+    var eyebrow = findExactText("estetica automotiva especializada");
+    var title = document.querySelector("h1");
 
-    if (candidates.length) {
-      var node = candidates[candidates.length - 1];
-      node.setAttribute("data-blueline-mobile-eyebrow", "true");
+    if (!eyebrow || !title) return;
+
+    /*
+      Encontra o primeiro ancestral da tag que contém o H1.
+      Esse é o bloco de copy do hero; mover esse ancestral mantém
+      tag + título + descrição + botões unidos, sem deslocar o logo.
+    */
+    var wrapper = eyebrow.parentElement;
+    var safety = 0;
+
+    while (wrapper && !wrapper.contains(title) && safety < 8) {
+      wrapper = wrapper.parentElement;
+      safety++;
+    }
+
+    if (wrapper && wrapper !== document.body && wrapper !== document.documentElement) {
+      wrapper.setAttribute("data-blueline-mobile-hero-copy", "true");
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", applyMobileFixes, { once: true });
-  } else {
+  function runFix() {
     applyMobileFixes();
+
+    /* O Work pode hidratar o DOM depois do DOMContentLoaded. */
+    setTimeout(applyMobileFixes, 250);
+    setTimeout(applyMobileFixes, 800);
+    setTimeout(applyMobileFixes, 1600);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runFix, { once: true });
+  } else {
+    runFix();
   }
 
   window.addEventListener("resize", applyMobileFixes);
 })();
-</script>`;
+</script>
 
 function cleanHeaders(headers) {
   const out = new Headers(headers);
