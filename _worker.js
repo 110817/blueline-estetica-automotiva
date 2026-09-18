@@ -35,8 +35,8 @@ const MOBILE_PATCH = `
 
   [data-blueline-mobile-eyebrow="true"] {
     position: relative !important;
-    transform: translateY(-34px) !important;
-    margin-bottom: -34px !important;
+    top: -58px !important;
+    margin-bottom: -58px !important;
     z-index: 5 !important;
   }
 }
@@ -61,13 +61,15 @@ const MOBILE_PATCH = `
     document.body.style.maxWidth = "100%";
     document.body.style.overflowX = "hidden";
 
-    var candidates = document.querySelectorAll("span, p, small, strong, em, div");
-    for (var i = 0; i < candidates.length; i++) {
-      var node = candidates[i];
-      if (normalizeText(node.textContent) === "estetica automotiva especializada") {
-        node.setAttribute("data-blueline-mobile-eyebrow", "true");
-        break;
-      }
+    var candidates = Array.from(
+      document.querySelectorAll("span, p, small, strong, em, div")
+    ).filter(function (node) {
+      return normalizeText(node.textContent) === "estetica automotiva especializada";
+    });
+
+    if (candidates.length) {
+      var node = candidates[candidates.length - 1];
+      node.setAttribute("data-blueline-mobile-eyebrow", "true");
     }
   }
 
