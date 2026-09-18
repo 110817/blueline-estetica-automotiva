@@ -1,0 +1,43 @@
+name: Capture original Work site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/capture-original.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Capture published site
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf _captured_site _wget
+          mkdir -p _captured_site _wget
+          wget             --recursive             --level=2             --page-requisites             --convert-links             --adjust-extension             --no-parent             --span-hosts             --domains=blueline-estetica-automotiva.patimedrado.chatgpt.site             --directory-prefix=_wget             "https://blueline-estetica-automotiva.patimedrado.chatgpt.site/"
+
+          SRC="_wget/blueline-estetica-automotiva.patimedrado.chatgpt.site"
+          test -d "$SRC"
+          cp -a "$SRC"/. _captured_site/
+
+          echo "Captured files:"
+          find _captured_site -maxdepth 3 -type f -printf "%p %s bytes\n" | sort
+
+      - name: Commit captured site
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _captured_site
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: capture published Work site"
+          git push
