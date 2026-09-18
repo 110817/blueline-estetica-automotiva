@@ -32,18 +32,20 @@ const MOBILE_PATCH = `
     box-sizing: border-box;
   }
 
-  /* Sobe o BLOCO de conteúdo do hero sem mover o logo. */
-  [data-blueline-mobile-hero-copy="true"] {
+  [data-blueline-hero-copy-fix="true"] {
     position: relative !important;
-    top: -58px !important;
-    margin-bottom: -58px !important;
+    top: -54px !important;
+    margin-bottom: -54px !important;
+    z-index: 5 !important;
   }
 }
 </style>
 
 <script id="blueline-mobile-fix-script">
 (function () {
-  function normalizeText(value) {
+  var PHRASE = "estetica automotiva especializada";
+
+  function normalize(value) {
     return (value || "")
       .normalize("NFD")
       .replace(/[\\u0300-\\u036f]/g, "")
@@ -52,65 +54,112 @@ const MOBILE_PATCH = `
       .toLowerCase();
   }
 
-  function findExactText(target) {
-    var nodes = document.querySelectorAll("span, p, small, strong, em, div");
-    for (var i = 0; i < nodes.length; i++) {
-      if (normalizeText(nodes[i].textContent) === target) {
-        return nodes[i];
+  function findEyebrow() {
+    var all = Array.from(document.querySelectorAll("body *"));
+    var matches = all.filter(function (el) {
+      var text = normalize(el.innerText || el.textContent);
+      return text.indexOf(PHRASE) !== -1;
+    });
+
+    if (!matches.length) return null;
+
+    matches.sort(function (a, b) {
+      var ta = normalize(a.innerText || a.textContent).length;
+      var tb = normalize(b.innerText || b.textContent).length;
+      if (ta !== tb) return ta - tb;
+
+      var ra = a.getBoundingClientRect();
+      var rb = b.getBoundingClientRect();
+      return (ra.width * ra.height) - (rb.width * rb.height);
+    });
+
+    return matches[0];
+  }
+
+  function findHeroTitle() {
+    var headings = Array.from(document.querySelectorAll("h1, h2"));
+    for (var i = 0; i < headings.length; i++) {
+      var text = normalize(headings[i].innerText || headings[i].textContent);
+      if (
+        text.indexOf("protecao que voce ve") !== -1 ||
+        text.indexOf("cuidado que permanece") !== -1
+      ) {
+        return headings[i];
       }
+    }
+    return document.querySelector("h1");
+  }
+
+  function commonAncestor(a, b) {
+    if (!a || !b) return null;
+    var node = a;
+    while (node && node !== document.body) {
+      if (node.contains(b)) return node;
+      node = node.parentElement;
     }
     return null;
   }
 
-  function applyMobileFixes() {
+  function applyFix() {
     if (window.innerWidth > 768) return;
 
-    document.documentElement.style.maxWidth = "100%";
-    document.documentElement.style.overflowX = "clip";
-    document.body.style.maxWidth = "100%";
-    document.body.style.overflowX = "clip";
+    document.documentElement.style.setProperty("overflow-x", "clip", "important");
+    document.body.style.setProperty("overflow-x", "clip", "important");
+    document.documentElement.style.setProperty("max-width", "100%", "important");
+    document.body.style.setProperty("max-width", "100%", "important");
 
-    var eyebrow = findExactText("estetica automotiva especializada");
-    var title = document.querySelector("h1");
-
+    var eyebrow = findEyebrow();
+    var title = findHeroTitle();
     if (!eyebrow || !title) return;
 
-    /*
-      Encontra o primeiro ancestral da tag que contém o H1.
-      Esse é o bloco de copy do hero; mover esse ancestral mantém
-      tag + título + descrição + botões unidos, sem deslocar o logo.
-    */
-    var wrapper = eyebrow.parentElement;
-    var safety = 0;
+    var wrapper = commonAncestor(eyebrow, title);
 
-    while (wrapper && !wrapper.contains(title) && safety < 8) {
-      wrapper = wrapper.parentElement;
-      safety++;
+    /*
+      Evita pegar uma seção grande demais. Se o ancestral comum for o próprio
+      section/main, tenta usar o filho direto desse ancestral que contém ambos.
+    */
+    if (wrapper) {
+      var candidates = Array.from(wrapper.children || []);
+      for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i].contains(eyebrow) && candidates[i].contains(title)) {
+          wrapper = candidates[i];
+          break;
+        }
+      }
     }
 
     if (wrapper && wrapper !== document.body && wrapper !== document.documentElement) {
-      wrapper.setAttribute("data-blueline-mobile-hero-copy", "true");
+      wrapper.setAttribute("data-blueline-hero-copy-fix", "true");
     }
   }
 
-  function runFix() {
-    applyMobileFixes();
+  function boot() {
+    applyFix();
 
-    /* O Work pode hidratar o DOM depois do DOMContentLoaded. */
-    setTimeout(applyMobileFixes, 250);
-    setTimeout(applyMobileFixes, 800);
-    setTimeout(applyMobileFixes, 1600);
+    var observer = new MutationObserver(function () {
+      applyFix();
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+
+    setTimeout(applyFix, 150);
+    setTimeout(applyFix, 500);
+    setTimeout(applyFix, 1200);
+    setTimeout(applyFix, 2500);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", runFix, { once: true });
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
   } else {
-    runFix();
+    boot();
   }
 
-  window.addEventListener("resize", applyMobileFixes);
+  window.addEventListener("resize", applyFix);
 })();
-</script>`;
+</script>
 
 function cleanHeaders(headers) {
   const out = new Headers(headers);
